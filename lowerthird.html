@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OBS Modern Lower Third</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: transparent; /* Keeps OBS background clear */
+        font-family: 'Inter', sans-serif;
+    }
+
+    .lower-third {
+        position: absolute;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        max-width: 1800px;
+        background: rgba(20, 20, 20, 0.85);
+        padding: 14px 24px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: white;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        opacity: 0;
+        animation: slideUp 0.8s ease forwards;
+    }
+
+    @keyframes slideUp {
+        from { transform: translate(-50%, 50px); opacity: 0; }
+        to   { transform: translate(-50%, 0); opacity: 1; }
+    }
+
+    .team {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 1.9rem;
+        font-weight: 600;
+    }
+
+    .score-box {
+        background: linear-gradient(145deg, #ff8d4e, #ffb67a);
+        padding: 8px 20px;
+        border-radius: 12px;
+        font-size: 2.4rem;
+        font-weight: 800;
+        color: #1a0f00;
+        min-width: 80px;
+        text-align: center;
+    }
+
+    .center {
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .clock {
+        font-size: 2.5rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+    }
+
+    .shot-clock {
+        background: #ff3b30;
+        padding: 4px 12px;
+        border-radius: 50px;
+        font-size: 1.4rem;
+        font-weight: 700;
+    }
+
+</style>
+</head>
+
+<body>
+
+<div class="lower-third">
+    <!-- LEFT TEAM -->
+    <div class="team">
+        <span id="teamAName">TEAM A</span>
+        <div class="score-box" id="teamAScore">0</div>
+    </div>
+
+    <!-- CENTER INFO -->
+    <div class="center">
+        <div class="clock" id="gameClockDisplay">00:00</div>
+        <div class="shot-clock" id="shotClockDisplay">24</div>
+    </div>
+
+    <!-- RIGHT TEAM -->
+    <div class="team">
+        <div class="score-box" id="teamBScore">0</div>
+        <span id="teamBName">TEAM B</span>
+    </div>
+</div>
+
+<script>
+// ==============================
+// SYNC FROM LOCAL STORAGE
+// ==============================
+function pad(t) { return String(t).padStart(2, "0"); }
+
+function updateOverlay() {
+    const DATA = JSON.parse(localStorage.getItem("basketball_scoreboard_state_v3"));
+    if (!DATA) return;
+
+    const s = DATA.state;
+    const p = DATA.players;
+
+    // TEAM NAMES + SCORES
+    document.getElementById("teamAName").textContent = s.teamA.name;
+    document.getElementById("teamBName").textContent = s.teamB.name;
+    document.getElementById("teamAScore").textContent = s.teamA.score;
+    document.getElementById("teamBScore").textContent = s.teamB.score;
+
+    // GAME CLOCK
+    const m = Math.floor(s.gameClockSeconds / 60);
+    const sec = s.gameClockSeconds % 60;
+    document.getElementById("gameClockDisplay")
+        .textContent = `${m}:${pad(sec)}`;
+
+    // SHOT CLOCK
+    document.getElementById("shotClockDisplay").textContent =
+        s.shotClockSeconds;
+}
+
+// UPDATE 10 times/sec for smooth sync
+setInterval(updateOverlay, 100);
+updateOverlay();
+</script>
+
+</body>
+</html>

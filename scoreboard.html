@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scoreboard Display - 16:9</title>
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      font-family: 'Arial Black', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .board {
+      width: 100vw;
+      height: 56.25vw; /* 16:9 ratio */
+      max-height: 100vh;
+      max-width: 177vh;
+      background: #111;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      grid-template-rows: auto 1fr auto;
+      padding: 40px;
+      box-sizing: border-box;
+      gap: 20px;
+    }
+    .team {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 20px;
+      border: 4px solid #333;
+    }
+    .team h1 { font-size: 4vw; margin: 0; }
+    .team .score { font-size: 10vw; margin-top: 20px; font-weight: bold; }
+    .center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    #clock { font-size: 12vw; font-weight: bold; }
+    #shot { font-size: 6vw; color: #f33; }
+    #quarter { font-size: 3vw; color: #ccc; }
+  </style>
+</head>
+<body>
+  <div class="board">
+    <div class="team">
+      <h1 id="teamANameBig">HOME</h1>
+      <div class="score" id="teamAScoreBig">0</div>
+    </div>
+
+    <div class="center">
+      <div id="quarter">Q1</div>
+      <div id="clock">10:00</div>
+      <div id="shot">24</div>
+    </div>
+
+    <div class="team">
+      <h1 id="teamBNameBig">AWAY</h1>
+      <div class="score" id="teamBScoreBig">0</div>
+    </div>
+  </div>
+
+  <script>
+    // Poll main scoreboard state from localStorage
+    function updateDisplay() {
+      const saved = localStorage.getItem("basketball_scoreboard_state_v3");
+      if (!saved) return;
+
+      try {
+        const data = JSON.parse(saved);
+        const s = data.state;
+
+        document.getElementById("teamANameBig").textContent = s.teamA.name;
+        document.getElementById("teamAScoreBig").textContent = s.teamA.score;
+
+        document.getElementById("teamBNameBig").textContent = s.teamB.name;
+        document.getElementById("teamBScoreBig").textContent = s.teamB.score;
+
+        document.getElementById("clock").textContent = formatTime(s.gameClockSeconds);
+        document.getElementById("shot").textContent = s.shotClockSeconds;
+        document.getElementById("quarter").textContent = "Q" + s.quarter;
+      } catch (e) {
+        console.error("Failed to parse state", e);
+      }
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m}:${String(s).padStart(2,'0')}`;
+    }
+
+    // Update 5 times a second
+    setInterval(updateDisplay, 200);
+  </script>
+</body>
+</html>

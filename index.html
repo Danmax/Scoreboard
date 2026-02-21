@@ -1,0 +1,1677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Basketball Scoreboard & Player Stats</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #f6f4f2;
+      --card: #ffffff;
+      --accent-a: #ffb347;   /* Team A */
+      --accent-b: #7ec4cf;   /* Team B */
+      --accent-main: #ff9f66;
+      --text: #222222;
+      --muted: #777777;
+      --border: #e0dedb;
+      --danger: #e76f51;
+      --success: #2a9d8f;
+      --shadow-soft: 0 10px 25px rgba(0, 0, 0, 0.06);
+      --radius-lg: 18px;
+      --radius-sm: 10px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: radial-gradient(circle at top, #fef6ee, #f4f2f0);
+      color: var(--text);
+    }
+
+    h1, h2, h3 { margin: 0; font-weight: 650; }
+
+    .app {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .header-title { font-size: 1.5rem; font-weight: 700; }
+    .header-sub { font-size: 0.9rem; color: var(--muted); }
+
+    .cards-row {
+      display: grid;
+      grid-template-columns: 2fr 1.3fr;
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .cards-row { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius-lg);
+      padding: 16px 18px;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .pill {
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: rgba(255,255,255,0.5);
+    }
+
+    .scoreboard {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .team-panel {
+      padding: 10px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .team-a {
+      background: linear-gradient(135deg, #ffe3c4, #fff8ee);
+      border: 1px solid rgba(255, 179, 71, 0.4);
+    }
+
+    .team-b {
+      background: linear-gradient(135deg, #e0f4f7, #f6fdff);
+      border: 1px solid rgba(126, 196, 207, 0.4);
+    }
+
+    .team-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .team-score {
+      font-size: 2.5rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .team-meta {
+      display: flex;
+      gap: 10px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+
+    .possession-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-main);
+      box-shadow: 0 0 0 4px rgba(255, 159, 102, 0.25);
+    }
+
+    .center-panel { text-align: center; }
+
+    .quarter-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .game-clock-display {
+      font-size: 2.8rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+
+    .game-clock-sub { font-size: 0.8rem; color: var(--muted); }
+
+    .shot-clock-wrapper {
+      margin-top: 8px;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: #111827;
+      color: #fefcea;
+      box-shadow: 0 10px 18px rgba(0,0,0,0.2);
+      transition: background 0.15s ease;
+    }
+
+    .shot-clock-wrapper.violation {
+      background: #7f1d1d;
+    }
+
+    .shot-clock-label {
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      opacity: 0.7;
+    }
+
+    .shot-clock-display {
+      font-size: 1.9rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+    }
+
+    .shot-violation-text {
+      margin-top: 4px;
+      font-size: 0.75rem;
+      color: var(--danger);
+      display: none;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    button {
+      font-family: inherit;
+      font-size: 0.85rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #f9f7f4;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.06s ease;
+    }
+
+    button:hover {
+      background: #f1ece5;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.06);
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+
+    .btn-primary {
+      background: var(--accent-main);
+      color: #271300;
+      border-color: rgba(0,0,0,0.08);
+    }
+
+    .btn-primary:hover { background: #ff8f4a; }
+
+    .btn-outline { background: transparent; }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+      border-color: rgba(0,0,0,0.1);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+      border-color: rgba(0,0,0,0.1);
+    }
+
+    .btn-xs { padding: 3px 8px; font-size: 0.72rem; border-radius: 999px; }
+    .btn-sm { padding: 4px 10px; font-size: 0.78rem; }
+
+    .stack { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+
+    .players-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .players-layout { grid-template-columns: 1fr; }
+    }
+
+    .players-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+
+    thead { background: #f4f1ec; }
+
+    th, td {
+      padding: 4px 6px;
+      text-align: center;
+    }
+
+    th {
+      font-weight: 600;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr:nth-child(even) { background: #fbf9f7; }
+    tbody tr:nth-child(odd)  { background: #ffffff; }
+
+    td.name-cell { text-align: left; font-weight: 500; white-space: nowrap; }
+
+    .player-actions {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .badge-live {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(42, 157, 143, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(42,157,143,0.4);
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.8rem;
+    }
+
+    .field-group label { color: var(--muted); }
+
+    .field-group input,
+    .field-group select {
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fbf9f7;
+      font-size: 0.82rem;
+      font-family: inherit;
+    }
+
+    .footer-note {
+      margin-top: 4px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    /* Modal styles */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+
+    .modal-backdrop.show { display: flex; }
+
+    .modal {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 16px 18px;
+      box-shadow: 0 24px 60px rgba(15,23,42,0.45);
+      max-width: 520px;
+      width: 100%;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .modal-title { font-size: 1.05rem; font-weight: 650; }
+
+    .modal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .roster-table input[type="number"],
+    .roster-table input[type="text"] {
+      width: 100%;
+      padding: 3px 6px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 0.75rem;
+      background: #fbf9f7;
+    }
+
+    .roster-table th,
+    .roster-table td {
+      padding: 4px 6px;
+      font-size: 0.75rem;
+    }
+
+    .roster-table thead {
+      position: sticky;
+      top: 0;
+      background: #f4f1ec;
+      z-index: 1;
+    }
+
+    .roster-flag { font-size: 0.7rem; color: var(--muted); }
+
+    .roster-new-row {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px dashed var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .roster-new-row input {
+      padding: 4px 8px;
+      border-radius: 999px;
+    }
+
+    .roster-empty {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      padding: 8px 0;
+    }
+
+    /* Substitution modal list */
+    #subInList button {
+      width: 100%;
+      text-align: left;
+      padding: 6px 10px;
+      border-radius: 10px;
+      margin-bottom: 6px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      cursor: pointer;
+    }
+
+    #subInList button.selected {
+      border-color: var(--accent-main);
+      background: #fff5ec;
+    }
+
+    /* Play-by-play log */
+    #actionLog {
+      max-height: 280px;
+      overflow-y: auto;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      padding: 6px 10px;
+      background: #fbf9f7;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    #actionLog div {
+      padding: 2px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div>
+        <div class="header-title">Basketball Scoreboard & Player Stats</div>
+        <div class="header-sub">
+          Simple control panel for live games – scores, clocks, and player stats. (Auto-saves in this browser)
+        </div>
+      </div>
+      <div class="pill">Light Modern · Web</div>
+    </header>
+
+    <!-- SCOREBOARD + CLOCKS -->
+    <div class="cards-row">
+      <section class="card">
+        <div class="card-header">
+          <h2>Scoreboard</h2>
+          <span class="pill" id="gameStatusLabel">Pre-game</span>
+        </div>
+
+        <div class="scoreboard">
+          <!-- Team A -->
+          <div class="team-panel team-a">
+            <div class="team-name">
+              <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent-a);"></span>
+              <span id="teamAName">Home</span>
+              <span id="teamAPossession" class="possession-dot" style="margin-left:auto;display:none;"></span>
+            </div>
+            <div class="team-score" id="teamAScore">0</div>
+            <div class="team-meta">
+              <span>Fouls: <strong id="teamAFouls">0</strong></span>
+              <span>Timeouts: <strong id="teamATOs">3</strong></span>
+            </div>
+            <div class="btn-row">
+              <button class="btn-sm btn-primary" data-team="A" data-score="+1">+1</button>
+              <button class="btn-sm btn-primary" data-team="A" data-score="+2">+2</button>
+              <button class="btn-sm btn-primary" data-team="A" data-score="+3">+3</button>
+              <button class="btn-sm btn-outline" data-team="A" data-score="-1">-1</button>
+              <button class="btn-sm btn-outline" data-team="A" data-foul="+1">+Foul</button>
+            </div>
+          </div>
+
+          <!-- Center (game & shot clock) -->
+          <div class="center-panel">
+            <div class="quarter-label">
+              QTR <span id="quarterDisplay">1</span>
+            </div>
+            <div class="game-clock-display" id="gameClock">10:00</div>
+            <div class="game-clock-sub">Game Clock</div>
+            <div class="btn-row" style="justify-content:center;margin-top:10px;">
+              <button class="btn-primary btn-sm" id="btnStartGameClock">Start</button>
+              <button class="btn-outline btn-sm" id="btnStopGameClock">Stop</button>
+              <button class="btn-outline btn-sm" id="btnNextQuarter">Next Qtr</button>
+              <button class="btn-outline btn-sm" id="btnResetGameClock">Reset Qtr</button>
+            </div>
+            <div class="shot-clock-wrapper">
+              <div class="shot-clock-label">Shot Clock</div>
+              <div class="shot-clock-display" id="shotClock">24</div>
+              <div class="shot-violation-text" id="shotViolationLabel">
+                Shot clock violation
+              </div>
+            </div>
+            <div class="btn-row" style="justify-content:center;margin-top:8px;">
+              <button class="btn-success btn-xs" id="btnStartShot">Start</button>
+              <button class="btn-outline btn-xs" id="btnStopShot">Stop</button>
+              <button class="btn-outline btn-xs" id="btnReset24">Reset 24</button>
+              <button class="btn-outline btn-xs" id="btnReset14">Reset 14</button>
+            </div>
+          </div>
+
+          <!-- Team B -->
+          <div class="team-panel team-b">
+            <div class="team-name">
+              <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent-b);"></span>
+              <span id="teamBName">Away</span>
+              <span id="teamBPossession" class="possession-dot" style="margin-left:auto;display:none;"></span>
+            </div>
+            <div class="team-score" id="teamBScore">0</div>
+            <div class="team-meta">
+              <span>Fouls: <strong id="teamBFouls">0</strong></span>
+              <span>Timeouts: <strong id="teamBTOs">3</strong></span>
+            </div>
+            <div class="btn-row" style="justify-content:flex-end;">
+              <button class="btn-sm btn-primary" data-team="B" data-score="+1">+1</button>
+              <button class="btn-sm btn-primary" data-team="B" data-score="+2">+2</button>
+              <button class="btn-sm btn-primary" data-team="B" data-score="+3">+3</button>
+              <button class="btn-sm btn-outline" data-team="B" data-score="-1">-1</button>
+              <button class="btn-sm btn-outline" data-team="B" data-foul="+1">+Foul</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-row" style="margin-top:12px;justify-content:space-between;flex-wrap:wrap;">
+          <div style="display:flex;gap:8px;">
+            <button class="btn-outline btn-sm" id="btnTogglePossession">Toggle Possession</button>
+            <button class="btn-outline btn-sm btn-danger" id="btnResetAll">Reset Game</button>
+          </div>
+          <div class="footer-note">
+            Tip: Use keyboard <strong>Space</strong> to start/stop game clock, <strong>P</strong> to pause shot clock.
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="card">
+        <div class="card-header">
+          <h2>Game Settings</h2>
+          <span class="pill">Config</span>
+        </div>
+        <div class="settings-grid">
+          <div class="field-group">
+            <label for="teamAInput">Team A Name</label>
+            <input id="teamAInput" type="text" value="Home" />
+          </div>
+          <div class="field-group">
+            <label for="teamBInput">Team B Name</label>
+            <input id="teamBInput" type="text" value="Away" />
+          </div>
+          <div class="field-group">
+            <label for="quarterLengthInput">Quarter Length (minutes)</label>
+            <input id="quarterLengthInput" type="number" min="1" max="15" value="10" />
+          </div>
+          <div class="field-group">
+            <label for="shotClockInput">Shot Clock (seconds)</label>
+            <input id="shotClockInput" type="number" min="1" max="30" value="24" />
+          </div>
+          <div class="field-group">
+            <label for="foulLimitInput">Foul-Out Limit</label>
+            <input id="foulLimitInput" type="number" min="1" max="6" value="5" />
+          </div>
+          <div class="field-group">
+            <label for="periodsInput">Total Periods</label>
+            <select id="periodsInput">
+              <option value="4" selected>4 (Standard)</option>
+              <option value="2">2 (Halves)</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="timingModeInput">Timing Style</label>
+            <select id="timingModeInput">
+              <option value="NBA">NBA – Clock stops on made basket</option>
+              <option value="FIBA">FIBA – Continuous clock</option>
+            </select>
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:12px;">
+          <button class="btn-primary" id="btnApplySettings">Apply Settings</button>
+        </div>
+        <p class="footer-note">
+          Settings adjust the clocks and foul tracking only – scores and stats stay until you reset the game.
+        </p>
+      </section>
+    </div>
+
+    <!-- PLAYERS & STATS -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Player Stats</h2>
+        <span class="pill">Per Player</span>
+      </div>
+
+      <div class="players-layout">
+        <!-- Team A players -->
+        <div>
+          <div class="players-card-header">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <h3 id="teamAStatsTitle">Team A</h3>
+              <button class="btn-xs btn-outline" id="btnEditRosterA">Edit roster</button>
+            </div>
+            <span class="badge-live">Tap buttons as plays happen</span>
+          </div>
+          <div class="stack">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Player</th>
+                  <th>PTS</th>
+                  <th>REB</th>
+                  <th>AST</th>
+                  <th>STL</th>
+                  <th>BLK</th>
+                  <th>FLS</th>
+                  <th>MIN</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="teamAPlayersBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Team B players -->
+        <div>
+          <div class="players-card-header">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <h3 id="teamBStatsTitle">Team B</h3>
+              <button class="btn-xs btn-outline" id="btnEditRosterB">Edit roster</button>
+            </div>
+            <span class="badge-live">Subs track minutes</span>
+          </div>
+          <div class="stack">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Player</th>
+                  <th>PTS</th>
+                  <th>REB</th>
+                  <th>AST</th>
+                  <th>STL</th>
+                  <th>BLK</th>
+                  <th>FLS</th>
+                  <th>MIN</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="teamBPlayersBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <p class="footer-note">
+        Minutes played count only while a player is marked <strong>ON COURT</strong>. Use “Sub Out” to swap with bench.
+      </p>
+    </section>
+
+    <!-- PLAY-BY-PLAY LOG -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Play-by-Play Log</h2>
+        <span class="pill">Live Feed</span>
+      </div>
+      <div id="actionLog"></div>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+        <input
+          id="customLogInput"
+          type="text"
+          placeholder="Type custom play-by-play note (e.g. 'Clutch 3 by Garcia #1 from Bob #7')"
+          style="flex:1;min-width:200px;padding:4px 8px;border-radius:999px;border:1px solid var(--border);font-size:0.8rem;"
+        />
+        <button class="btn-xs btn-outline" id="btnAddCustomLog">Add Note</button>
+      </div>
+      <p class="footer-note">
+        Notes are timestamped with the current game clock (e.g., end-game clutch plays, big runs, key substitutions).
+      </p>
+    </section>
+  </div>
+
+  <!-- ROSTER MODAL -->
+  <div class="modal-backdrop" id="rosterModalBackdrop">
+    <div class="modal" id="rosterModal">
+      <div class="modal-header">
+        <div class="modal-title" id="rosterModalTitle">Edit Roster</div>
+        <button class="btn-xs btn-outline" id="btnCloseRoster">&times; Close</button>
+      </div>
+      <div class="modal-body">
+        <table class="roster-table" style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="width:50px;">#</th>
+              <th>Player Name</th>
+              <th style="width:70px;">On Court</th>
+              <th style="width:60px;">Delete</th>
+            </tr>
+          </thead>
+          <tbody id="rosterEditorBody"></tbody>
+        </table>
+        <div class="roster-empty" id="rosterEmptyMessage" style="display:none;">
+          No players yet. Add some below.
+        </div>
+        <div class="roster-new-row">
+          <span class="roster-flag">Add new player:</span>
+          <input type="number" id="newPlayerNumberInput" placeholder="#"
+                 style="width:60px;" />
+          <input type="text" id="newPlayerNameInput" placeholder="Player name"
+                 style="flex:1;min-width:150px;" />
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.75rem;">
+            <input type="checkbox" id="newPlayerOnCourtInput" checked />
+            On court
+          </label>
+          <button class="btn-xs btn-primary" id="btnAddPlayer">Add</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span class="footer-note">
+          Changes are saved automatically for this browser.
+        </span>
+        <button class="btn-sm btn-outline" id="btnCloseRosterBottom">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBSTITUTION MODAL -->
+  <div class="modal-backdrop" id="subModalBackdrop">
+    <div class="modal" id="subModal">
+      <div class="modal-header">
+        <div class="modal-title">Substitution</div>
+        <button class="btn-xs btn-outline" id="closeSubModal">&times; Close</button>
+      </div>
+      <div class="modal-body">
+        <h4 id="subOutLabel" style="margin-bottom:8px;"></h4>
+        <div id="subInList"></div>
+      </div>
+      <div class="modal-footer">
+        <span class="footer-note">Select a bench player to bring in.</span>
+        <button class="btn-sm btn-primary" id="confirmSubBtn" disabled>Confirm Sub</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================
+    // Core Game State
+    // ==========================
+    const state = {
+      teamA: { name: "Home", score: 0, fouls: 0, timeouts: 3 },
+      teamB: { name: "Away", score: 0, fouls: 0, timeouts: 3 },
+      possession: "A", // "A" or "B"
+      quarter: 1,
+      totalQuarters: 4,
+      quarterLengthMinutes: 10,
+      foulLimit: 5,
+      gameClockSeconds: 10 * 60,
+      shotClockDefault: 24,
+      shotClockSeconds: 24,
+      gameClockRunning: false,
+      shotClockRunning: false,
+      gameClockTimerId: null,
+      shotClockTimerId: null,
+      timingMode: "NBA",      // "NBA" or "FIBA"
+      shotViolation: false,   // shot clock violation flag
+    };
+
+    // Default players
+    const teamAPlayersDefault = [
+      { number: 1,  name: "Player A1" },
+      { number: 3,  name: "Player A2" },
+      { number: 5,  name: "Player A3" },
+      { number: 7,  name: "Player A4" },
+      { number: 9,  name: "Player A5" },
+      { number: 11, name: "Player A6" },
+      { number: 13, name: "Player A7" },
+    ];
+    const teamBPlayersDefault = [
+      { number: 2,  name: "Player B1" },
+      { number: 4,  name: "Player B2" },
+      { number: 6,  name: "Player B3" },
+      { number: 8,  name: "Player B4" },
+      { number: 10, name: "Player B5" },
+      { number: 12, name: "Player B6" },
+      { number: 14, name: "Player B7" },
+    ];
+
+    function createPlayerState(playersArr, teamKey) {
+      // first 5 on court, others bench
+      return playersArr.map((p, idx) => ({
+        id: teamKey + "-" + idx + "-" + Date.now(),
+        number: p.number,
+        name: p.name,
+        pts: 0,
+        reb: 0,
+        ast: 0,
+        stl: 0,
+        blk: 0,
+        fls: 0,
+        secondsPlayed: 0,
+        onCourt: idx < 5,
+      }));
+    }
+
+    const players = {
+      A: createPlayerState(teamAPlayersDefault, "A"),
+      B: createPlayerState(teamBPlayersDefault, "B"),
+    };
+
+    // Play-by-play log
+    let actionLog = [];
+
+    // Substitution UI state
+    let pendingSubOut = null;
+    let pendingTeamKey = null;
+    let selectedSubInId = null;
+
+    // ==========================
+    // LocalStorage Persistence
+    // ==========================
+    const STORAGE_KEY = "basketball_scoreboard_state_v4";
+
+    function serializeState() {
+      const { gameClockTimerId, shotClockTimerId, ...rest } = state;
+      return rest;
+    }
+
+    function saveState() {
+      try {
+        const payload = { state: serializeState(), players, log: actionLog };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch (e) {
+        console.error("Failed to save state", e);
+      }
+    }
+
+    function loadState() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        if (data.state) {
+          Object.assign(state, data.state);
+          state.gameClockRunning = false;
+          state.shotClockRunning = false;
+          state.gameClockTimerId = null;
+          state.shotClockTimerId = null;
+          if (!state.timingMode) state.timingMode = "NBA";
+          if (typeof state.shotViolation !== "boolean") state.shotViolation = false;
+        }
+        if (data.players) {
+          if (data.players.A) players.A = data.players.A;
+          if (data.players.B) players.B = data.players.B;
+        }
+        if (Array.isArray(data.log)) {
+          actionLog = data.log;
+        }
+        // Ensure new stats exist
+        ["A","B"].forEach(teamKey => {
+          players[teamKey].forEach(pl => {
+            if (pl.stl == null) pl.stl = 0;
+            if (pl.blk == null) pl.blk = 0;
+          });
+        });
+      } catch (e) {
+        console.error("Failed to load state", e);
+      }
+    }
+
+    loadState();
+
+    // ==========================
+    // Helpers
+    // ==========================
+    const el = (id) => document.getElementById(id);
+
+    function formatTime(totalSeconds) {
+      const m = Math.floor(totalSeconds / 60);
+      const s = totalSeconds % 60;
+      return `${String(m).padStart(1, "0")}:${String(s).padStart(2, "0")}`;
+    }
+
+    // Track minutes played (approx) every 10 seconds of real time
+    setInterval(() => {
+      if (state.gameClockRunning) {
+        ["A", "B"].forEach((teamKey) => {
+          players[teamKey].forEach((pl) => {
+            if (pl.onCourt) pl.secondsPlayed += 10;
+          });
+        });
+        renderPlayersTables();
+        saveState();
+      }
+    }, 10000);
+
+    function setShotViolation(flag) {
+      state.shotViolation = flag;
+      const label = el("shotViolationLabel");
+      const wrapper = document.querySelector(".shot-clock-wrapper");
+      if (label) label.style.display = flag ? "block" : "none";
+      if (wrapper) {
+        if (flag) wrapper.classList.add("violation");
+        else wrapper.classList.remove("violation");
+      }
+    }
+
+    function logAction(text) {
+      const timestamp = formatTime(state.gameClockSeconds);
+      actionLog.unshift(`[${timestamp}] ${text}`);
+      renderActionLog();
+      saveState();
+    }
+
+    function renderActionLog() {
+      const div = el("actionLog");
+      if (!div) return;
+      div.innerHTML = actionLog.map(entry => `<div>${entry}</div>`).join("");
+    }
+
+    // Central possession helper
+    function setPossession(teamKey) {
+      const gameWasRunning = state.gameClockRunning;
+      state.possession = teamKey; // "A" or "B"
+
+      // Reset shot clock for new possession
+      stopShotClock();
+      resetShotClock(state.shotClockDefault);
+
+      // If game clock is running and no violation, restart shot clock
+      if (gameWasRunning && !state.shotViolation && state.gameClockSeconds > 0) {
+        startShotClock();
+      }
+
+      renderScoreboard();
+      saveState();
+    }
+
+    // Central scoring helper (optional player context)
+    function addPoints(teamKey, points, player = null) {
+      if (!points) return;
+      const teamObj = teamKey === "A" ? state.teamA : state.teamB;
+      const teamName = teamObj.name;
+      const newScore = teamObj.score + points;
+      teamObj.score = Math.max(0, newScore);
+
+      // Negative points (score correction) – no possession or log
+      if (points <= 0) return;
+
+      // Logging
+      if (player) {
+        logAction(
+          `${player.name} #${player.number} hits a ${points}-pointer for ${teamName} (now ${player.pts} pts)`
+        );
+      } else {
+        logAction(`${teamName} scores ${points} point${points === 1 ? "" : "s"}.`);
+      }
+
+      // Determine new possession (always opposite team)
+      const otherTeam = teamKey === "A" ? "B" : "A";
+
+      // NBA: stop game clock after made basket
+      if (state.timingMode === "NBA" && state.gameClockRunning) {
+        stopGameClock(); // also stops shot clock
+      }
+
+      // Set new possession, reset shot clock
+      setPossession(otherTeam);
+    }
+
+    // ==========================
+    // Rendering
+    // ==========================
+    function renderScoreboard() {
+      el("teamAName").textContent = state.teamA.name;
+      el("teamBName").textContent = state.teamB.name;
+      el("teamAScore").textContent = state.teamA.score;
+      el("teamBScore").textContent = state.teamB.score;
+      el("teamAFouls").textContent = state.teamA.fouls;
+      el("teamBFouls").textContent = state.teamB.fouls;
+      el("teamATOs").textContent = state.teamA.timeouts;
+      el("teamBTOs").textContent = state.teamB.timeouts;
+      el("quarterDisplay").textContent = state.quarter;
+      el("gameClock").textContent = formatTime(state.gameClockSeconds);
+      el("shotClock").textContent = state.shotClockSeconds;
+      el("teamAPossession").style.display =
+        state.possession === "A" ? "inline-block" : "none";
+      el("teamBPossession").style.display =
+        state.possession === "B" ? "inline-block" : "none";
+
+      const label = el("gameStatusLabel");
+      if (
+        !state.gameClockRunning &&
+        state.quarter === 1 &&
+        state.gameClockSeconds === state.quarterLengthMinutes * 60 &&
+        state.teamA.score === 0 &&
+        state.teamB.score === 0
+      ) {
+        label.textContent = "Pre-game";
+      } else if (state.gameClockRunning) {
+        label.textContent = "Live";
+      } else if (
+        !state.gameClockRunning &&
+        state.quarter >= state.totalQuarters &&
+        state.gameClockSeconds === 0
+      ) {
+        label.textContent = "Final";
+      } else {
+        label.textContent = "Stopped";
+      }
+
+      // Ensure violation UI matches state
+      setShotViolation(state.shotViolation);
+    }
+
+    function renderPlayersTables() {
+      renderTeamPlayers("A", "teamAPlayersBody");
+      renderTeamPlayers("B", "teamBPlayersBody");
+      el("teamAStatsTitle").textContent = state.teamA.name;
+      el("teamBStatsTitle").textContent = state.teamB.name;
+    }
+
+    function renderTeamPlayers(teamKey, bodyId) {
+      const tbody = el(bodyId);
+      tbody.innerHTML = "";
+
+      // On-court players first, then bench
+      const list = [
+        ...players[teamKey].filter((p) => p.onCourt),
+        ...players[teamKey].filter((p) => !p.onCourt),
+      ];
+
+      list.forEach((pl) => {
+        const tr = document.createElement("tr");
+        const mins = (pl.secondsPlayed / 60).toFixed(1);
+        tr.innerHTML = `
+          <td>${pl.number}</td>
+          <td class="name-cell">${pl.name}${pl.onCourt ? " ⭐" : ""}</td>
+          <td>${pl.pts}</td>
+          <td>${pl.reb}</td>
+          <td>${pl.ast}</td>
+          <td>${pl.stl}</td>
+          <td>${pl.blk}</td>
+          <td>${pl.fls}</td>
+          <td>${mins}</td>
+          <td>
+            <div class="player-actions">
+              <button class="btn-xs btn-outline" data-player="${pl.id}" data-team="${teamKey}" data-stat="pts" data-value="1">+1</button>
+              <button class="btn-xs btn-outline" data-player="${pl.id}" data-team="${teamKey}" data-stat="pts" data-value="2">+2</button>
+              <button class="btn-xs btn-outline" data-player="${pl.id}" data-team="${teamKey}" data-stat="pts" data-value="3">+3</button>
+              <button class="btn-xs btn-outline" data-player="${pl.id}" data-team="${teamKey}" data-stat="reb" data-value="1">+REB</button>
+              <button class="btn-xs btn-outline" data-player="${pl.id}" data-team="${teamKey}" data-stat="ast" data-value="1">+AST</button>
+              <button class="btn-xs btn-outline" data-player="${pl.id}" data-team="${teamKey}" data-stat="stl" data-value="1">+STL</button>
+              <button class="btn-xs btn-outline" data-player="${pl.id}" data-team="${teamKey}" data-stat="blk" data-value="1">+BLK</button>
+              <button class="btn-xs btn-outline" data-player="${pl.id}" data-team="${teamKey}" data-stat="fls" data-value="1">+F</button>
+              <button class="btn-xs ${pl.onCourt ? "btn-danger" : "btn-success"}"
+                data-player="${pl.id}" data-team="${teamKey}" data-action="toggleCourt">
+                ${pl.onCourt ? "Sub Out" : "Sub In"}
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ==========================
+    // Game & Shot Clock Logic
+    // ==========================
+    function resetGameClockToQuarterLength() {
+      state.gameClockSeconds = state.quarterLengthMinutes * 60;
+      setShotViolation(false);
+      el("gameClock").textContent = formatTime(state.gameClockSeconds);
+      saveState();
+    }
+
+    function resetShotClock(seconds) {
+      state.shotClockSeconds = seconds;
+      setShotViolation(false);
+      el("shotClock").textContent = state.shotClockSeconds;
+      saveState();
+    }
+
+    function startShotClock() {
+      if (state.shotClockRunning || state.shotClockSeconds <= 0) return;
+      state.shotClockRunning = true;
+      saveState();
+      state.shotClockTimerId = setInterval(() => {
+        if (state.shotClockSeconds > 0) {
+          state.shotClockSeconds--;
+          el("shotClock").textContent = state.shotClockSeconds;
+          saveState();
+          if (state.shotClockSeconds === 0) {
+            // Shot clock violation: stop both clocks, show UI
+            stopShotClock();
+            stopGameClock();
+            setShotViolation(true);
+            const teamName = state.possession === "A" ? state.teamA.name : state.teamB.name;
+            logAction(`Shot clock violation by ${teamName}`);
+          }
+        } else {
+          stopShotClock();
+        }
+      }, 1000);
+    }
+
+    function stopShotClock() {
+      state.shotClockRunning = false;
+      if (state.shotClockTimerId) {
+        clearInterval(state.shotClockTimerId);
+        state.shotClockTimerId = null;
+      }
+      saveState();
+    }
+
+    function startGameClock() {
+      if (state.gameClockRunning || state.gameClockSeconds <= 0) return;
+      // Can't start if there's an active violation – operator should clear/reset
+      if (state.shotViolation) return;
+
+      state.gameClockRunning = true;
+      renderScoreboard();
+      saveState();
+
+      // Auto-start shot clock when game clock starts
+      if (!state.shotClockRunning && state.shotClockSeconds > 0) {
+        startShotClock();
+      }
+
+      state.gameClockTimerId = setInterval(() => {
+        if (state.gameClockSeconds > 0) {
+          state.gameClockSeconds--;
+          renderScoreboard();
+          saveState();
+          if (state.gameClockSeconds === 0) {
+            // End of period or game
+            stopGameClock();
+            if (state.quarter < state.totalQuarters) {
+              alert("End of Quarter " + state.quarter);
+            } else {
+              alert("End of Game");
+            }
+          }
+        } else {
+          stopGameClock();
+        }
+      }, 1000);
+    }
+
+    function stopGameClock() {
+      state.gameClockRunning = false;
+      if (state.gameClockTimerId) {
+        clearInterval(state.gameClockTimerId);
+        state.gameClockTimerId = null;
+      }
+      // Shot clock must stop with game clock
+      stopShotClock();
+      renderScoreboard();
+      saveState();
+    }
+
+    // ==========================
+    // Score & Foul Buttons (team-level)
+    // ==========================
+    function handleScoreButtonClick(e) {
+      const btn = e.target.closest("button[data-team]");
+      if (!btn) return;
+      const teamKey = btn.dataset.team;
+      const scoreDelta = parseInt(btn.dataset.score || "0", 10);
+      const foulDelta = parseInt(btn.dataset.foul || "0", 10);
+
+      if (scoreDelta) {
+        addPoints(teamKey, scoreDelta);
+      }
+
+      if (foulDelta) {
+        const teamObj = teamKey === "A" ? state.teamA : state.teamB;
+        teamObj.fouls = Math.max(0, teamObj.fouls + foulDelta);
+        const teamName = teamObj.name;
+        logAction(`${teamName} commits a team foul (total ${teamObj.fouls})`);
+        if (teamObj.fouls >= state.foulLimit) {
+          alert(`${teamName} reached foul limit!`);
+        }
+      }
+
+      renderScoreboard();
+      saveState();
+    }
+
+    document.body.addEventListener("click", handleScoreButtonClick);
+
+    // ==========================
+    // Button bindings
+    // ==========================
+    el("btnStartGameClock").addEventListener("click", startGameClock);
+    el("btnStopGameClock").addEventListener("click", stopGameClock);
+    el("btnResetGameClock").addEventListener("click", () => {
+      stopGameClock();
+      resetGameClockToQuarterLength();
+    });
+    el("btnNextQuarter").addEventListener("click", () => {
+      stopGameClock();
+      if (state.quarter < state.totalQuarters) {
+        state.quarter++;
+        resetGameClockToQuarterLength();
+      } else {
+        alert("Already at final period.");
+      }
+      renderScoreboard();
+      saveState();
+    });
+
+    el("btnStartShot").addEventListener("click", startShotClock);
+    el("btnStopShot").addEventListener("click", stopShotClock);
+    el("btnReset24").addEventListener("click", () => {
+      resetShotClock(state.shotClockDefault);
+    });
+    el("btnReset14").addEventListener("click", () => {
+      resetShotClock(14);
+    });
+
+    el("btnTogglePossession").addEventListener("click", () => {
+      const nextTeam = state.possession === "A" ? "B" : "A";
+      const teamName = nextTeam === "A" ? state.teamA.name : state.teamB.name;
+      setPossession(nextTeam);
+      logAction(`Possession arrow to ${teamName}`);
+    });
+
+    el("btnResetAll").addEventListener("click", () => {
+      if (!confirm("Reset entire game (scores, clocks, stats, minutes, log)?")) return;
+      state.teamA.score = 0;
+      state.teamB.score = 0;
+      state.teamA.fouls = 0;
+      state.teamB.fouls = 0;
+      state.teamA.timeouts = 3;
+      state.teamB.timeouts = 3;
+      state.quarter = 1;
+      state.possession = "A";
+      state.timingMode = el("timingModeInput").value || "NBA";
+      setShotViolation(false);
+
+      stopGameClock();
+      state.quarterLengthMinutes = parseInt(el("quarterLengthInput").value || "10", 10);
+      state.shotClockDefault = parseInt(el("shotClockInput").value || "24", 10);
+      resetGameClockToQuarterLength();
+      resetShotClock(state.shotClockDefault);
+
+      ["A", "B"].forEach((teamKey) => {
+        players[teamKey].forEach((pl, idx) => {
+          pl.pts = 0;
+          pl.reb = 0;
+          pl.ast = 0;
+          pl.stl = 0;
+          pl.blk = 0;
+          pl.fls = 0;
+          pl.secondsPlayed = 0;
+          pl.onCourt = idx < 5; // reset to 5 on court
+        });
+      });
+
+      actionLog = [];
+      renderScoreboard();
+      renderPlayersTables();
+      renderActionLog();
+      saveState();
+    });
+
+    // ==========================
+    // Settings Apply
+    // ==========================
+    el("btnApplySettings").addEventListener("click", () => {
+      const teamAName = el("teamAInput").value || "Home";
+      const teamBName = el("teamBInput").value || "Away";
+      const qLen = parseInt(el("quarterLengthInput").value || "10", 10);
+      const shotLen = parseInt(el("shotClockInput").value || "24", 10);
+      const foulLimitVal = parseInt(el("foulLimitInput").value || "5", 10);
+      const periods = parseInt(el("periodsInput").value || "4", 10);
+      const timingMode = el("timingModeInput").value || "NBA";
+
+      state.teamA.name = teamAName;
+      state.teamB.name = teamBName;
+      state.quarterLengthMinutes = qLen;
+      state.shotClockDefault = shotLen;
+      state.foulLimit = foulLimitVal;
+      state.totalQuarters = periods;
+      state.timingMode = timingMode;
+
+      stopGameClock();
+      resetGameClockToQuarterLength();
+      resetShotClock(state.shotClockDefault);
+
+      renderScoreboard();
+      renderPlayersTables();
+      saveState();
+    });
+
+    // ==========================
+    // Player Stat Buttons & Subs
+    // ==========================
+    document.body.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-player]");
+      if (!btn) return;
+      const playerId = btn.dataset.player;
+      const teamKey = btn.dataset.team;
+      const pl = players[teamKey].find((p) => p.id === playerId);
+      if (!pl) return;
+
+      if (btn.dataset.action === "toggleCourt") {
+        // If this player is currently on the bench and we click "Sub In" directly
+        if (pl.onCourt === false) {
+          const onCourtCount = players[teamKey].filter((p) => p.onCourt).length;
+          if (onCourtCount >= 5) {
+            alert("Only 5 players can be on the court. Sub someone out first.");
+            return;
+          }
+          pl.onCourt = true;
+          logAction(`${pl.name} #${pl.number} checks into the game.`);
+          renderPlayersTables();
+          saveState();
+          return;
+        }
+
+        // If player is on court → open substitution modal to choose who comes in
+        pendingSubOut = pl;
+        pendingTeamKey = teamKey;
+        openSubModal();
+        return;
+      }
+
+      // Normal stat updates
+      const stat = btn.dataset.stat;
+      const value = parseInt(btn.dataset.value || "0", 10);
+      if (stat && !isNaN(value)) {
+        pl[stat] += value;
+
+        const teamName = teamKey === "A" ? state.teamA.name : state.teamB.name;
+
+        if (stat === "pts") {
+          addPoints(teamKey, value, pl);
+        } else if (stat === "reb") {
+          logAction(`${pl.name} #${pl.number} grabs a rebound for ${teamName}.`);
+        } else if (stat === "ast") {
+          logAction(`${pl.name} #${pl.number} records an assist for ${teamName}.`);
+        } else if (stat === "stl") {
+          logAction(`${pl.name} #${pl.number} with a steal for ${teamName}.`);
+        } else if (stat === "blk") {
+          logAction(`${pl.name} #${pl.number} blocks a shot for ${teamName}.`);
+        } else if (stat === "fls") {
+          logAction(`${pl.name} #${pl.number} commits a foul for ${teamName}.`);
+          const teamObj = teamKey === "A" ? state.teamA : state.teamB;
+          teamObj.fouls += value;
+        }
+      }
+
+      renderScoreboard();
+      renderPlayersTables();
+      saveState();
+    });
+
+    // ==========================
+    // Keyboard Shortcuts
+    // ==========================
+    document.addEventListener("keydown", (e) => {
+      // Ignore shortcuts while typing in inputs/textareas/contenteditable
+      const t = e.target;
+      const tag = t.tagName;
+      const typing = tag === "INPUT" || tag === "TEXTAREA" || t.isContentEditable;
+      if (typing) return;
+
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (state.gameClockRunning) {
+          stopGameClock();
+        } else {
+          startGameClock();
+        }
+      }
+      if (e.key.toLowerCase() === "p") {
+        if (state.shotClockRunning) {
+          stopShotClock();
+        } else {
+          startShotClock();
+        }
+      }
+    });
+
+    // ==========================
+    // Custom Log Note
+    // ==========================
+    el("btnAddCustomLog").addEventListener("click", () => {
+      const input = el("customLogInput");
+      const text = input.value.trim();
+      if (!text) return;
+      logAction(text);
+      input.value = "";
+    });
+
+    // ==========================
+    // Roster Modal Logic
+    // ==========================
+    let currentRosterTeamKey = "A";
+
+    function openRosterModal(teamKey) {
+      currentRosterTeamKey = teamKey;
+      const teamName = teamKey === "A" ? state.teamA.name : state.teamB.name;
+      el("rosterModalTitle").textContent = teamName + " Roster";
+      renderRosterEditor();
+      el("rosterModalBackdrop").classList.add("show");
+    }
+
+    function closeRosterModal() {
+      el("rosterModalBackdrop").classList.remove("show");
+    }
+
+    function renderRosterEditor() {
+      const list = players[currentRosterTeamKey];
+      const tbody = el("rosterEditorBody");
+      const emptyMsg = el("rosterEmptyMessage");
+      tbody.innerHTML = "";
+
+      if (!list.length) {
+        emptyMsg.style.display = "block";
+      } else {
+        emptyMsg.style.display = "none";
+      }
+
+      list.forEach((pl) => {
+        const tr = document.createElement("tr");
+        tr.dataset.playerId = pl.id;
+        tr.innerHTML = `
+          <td><input type="number" class="roster-number-input" value="${pl.number}" /></td>
+          <td><input type="text" class="roster-name-input" value="${pl.name}" /></td>
+          <td>
+            <label style="display:flex;align-items:center;justify-content:center;gap:4px;">
+              <input type="checkbox" class="roster-oncourt-input" ${pl.onCourt ? "checked" : ""} />
+              <span style="font-size:0.7rem;">On</span>
+            </label>
+          </td>
+          <td><button class="btn-xs btn-outline roster-delete-btn">Delete</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function addPlayer(teamKey, name, number, onCourt) {
+      players[teamKey].push({
+        id: teamKey + "-" + Date.now(),
+        number,
+        name,
+        pts: 0,
+        reb: 0,
+        ast: 0,
+        stl: 0,
+        blk: 0,
+        fls: 0,
+        secondsPlayed: 0,
+        onCourt,
+      });
+      renderPlayersTables();
+      renderRosterEditor();
+      saveState();
+    }
+
+    function updatePlayer(teamKey, playerId, updates) {
+      const p = players[teamKey].find((pl) => pl.id === playerId);
+      if (!p) return;
+      Object.assign(p, updates);
+      renderPlayersTables();
+      // IMPORTANT: do NOT re-render roster editor here (prevents cursor loss)
+      saveState();
+    }
+
+    function deletePlayer(teamKey, playerId) {
+      players[teamKey] = players[teamKey].filter((pl) => pl.id !== playerId);
+      renderPlayersTables();
+      renderRosterEditor();
+      saveState();
+    }
+
+    el("btnEditRosterA").addEventListener("click", () => openRosterModal("A"));
+    el("btnEditRosterB").addEventListener("click", () => openRosterModal("B"));
+    el("btnCloseRoster").addEventListener("click", closeRosterModal);
+    el("btnCloseRosterBottom").addEventListener("click", closeRosterModal);
+    el("rosterModalBackdrop").addEventListener("click", (e) => {
+      if (e.target.id === "rosterModalBackdrop") closeRosterModal();
+    });
+
+    el("rosterEditorBody").addEventListener("input", (e) => {
+      const row = e.target.closest("tr[data-player-id]");
+      if (!row) return;
+      const playerId = row.dataset.playerId;
+      const teamKey = currentRosterTeamKey;
+
+      if (e.target.classList.contains("roster-number-input")) {
+        const value = parseInt(e.target.value || "0", 10);
+        updatePlayer(teamKey, playerId, { number: value });
+      }
+      if (e.target.classList.contains("roster-name-input")) {
+        updatePlayer(teamKey, playerId, { name: e.target.value });
+      }
+    });
+
+    el("rosterEditorBody").addEventListener("change", (e) => {
+      const row = e.target.closest("tr[data-player-id]");
+      if (!row) return;
+      const playerId = row.dataset.playerId;
+      const teamKey = currentRosterTeamKey;
+
+      if (e.target.classList.contains("roster-oncourt-input")) {
+        updatePlayer(teamKey, playerId, { onCourt: e.target.checked });
+      }
+    });
+
+    el("rosterEditorBody").addEventListener("click", (e) => {
+      if (!e.target.classList.contains("roster-delete-btn")) return;
+      const row = e.target.closest("tr[data-player-id]");
+      if (!row) return;
+      const playerId = row.dataset.playerId;
+      const teamKey = currentRosterTeamKey;
+      if (confirm("Remove this player from roster?")) {
+        deletePlayer(teamKey, playerId);
+      }
+    });
+
+    el("btnAddPlayer").addEventListener("click", () => {
+      const numInput = el("newPlayerNumberInput");
+      const nameInput = el("newPlayerNameInput");
+      const onCourtInput = el("newPlayerOnCourtInput");
+
+      const number = parseInt(numInput.value || "0", 10);
+      const name = nameInput.value.trim();
+      const onCourt = onCourtInput.checked;
+
+      if (!name) {
+        alert("Enter a player name.");
+        return;
+      }
+      addPlayer(currentRosterTeamKey, name, isNaN(number) ? 0 : number, onCourt);
+      numInput.value = "";
+      nameInput.value = "";
+      onCourtInput.checked = true;
+    });
+
+    // ==========================
+    // Substitution Modal Logic
+    // ==========================
+    function openSubModal() {
+      const teamPlayers = players[pendingTeamKey];
+      const bench = teamPlayers.filter((p) => !p.onCourt);
+      const subOutLabel = el("subOutLabel");
+      subOutLabel.textContent = `Sub OUT: #${pendingSubOut.number} ${pendingSubOut.name}`;
+
+      const listArea = el("subInList");
+      listArea.innerHTML = "";
+      selectedSubInId = null;
+      el("confirmSubBtn").disabled = true;
+
+      if (bench.length === 0) {
+        listArea.innerHTML = '<div class="footer-note">No bench players available.</div>';
+      } else {
+        bench.forEach((pl) => {
+          const btn = document.createElement("button");
+          btn.textContent = `#${pl.number} ${pl.name}`;
+          btn.dataset.id = pl.id;
+          btn.addEventListener("click", () => {
+            selectedSubInId = pl.id;
+            Array.from(listArea.children).forEach((b) =>
+              b.classList.remove("selected")
+            );
+            btn.classList.add("selected");
+            el("confirmSubBtn").disabled = false;
+          });
+          listArea.appendChild(btn);
+        });
+      }
+
+      el("subModalBackdrop").classList.add("show");
+    }
+
+    function closeSubModal() {
+      el("subModalBackdrop").classList.remove("show");
+      pendingSubOut = null;
+      pendingTeamKey = null;
+      selectedSubInId = null;
+    }
+
+    el("closeSubModal").addEventListener("click", closeSubModal);
+    el("subModalBackdrop").addEventListener("click", (e) => {
+      if (e.target.id === "subModalBackdrop") {
+        closeSubModal();
+      }
+    });
+
+    el("confirmSubBtn").addEventListener("click", () => {
+      if (!pendingSubOut || !pendingTeamKey || !selectedSubInId) return;
+      const teamList = players[pendingTeamKey];
+      const subIn = teamList.find((p) => p.id === selectedSubInId);
+      if (!subIn) return;
+
+      pendingSubOut.onCourt = false;
+      subIn.onCourt = true;
+
+      logAction(
+        `${pendingSubOut.name} #${pendingSubOut.number} subbed out for ${subIn.name} #${subIn.number}.`
+      );
+
+      closeSubModal();
+      renderPlayersTables();
+      saveState();
+    });
+
+    // ==========================
+    // Init
+    // ==========================
+    function initSettingsInputsFromState() {
+      el("teamAInput").value = state.teamA.name;
+      el("teamBInput").value = state.teamB.name;
+      el("quarterLengthInput").value = state.quarterLengthMinutes;
+      el("shotClockInput").value = state.shotClockDefault;
+      el("foulLimitInput").value = state.foulLimit;
+      el("periodsInput").value = String(state.totalQuarters);
+      el("timingModeInput").value = state.timingMode || "NBA";
+    }
+
+    resetGameClockToQuarterLength();
+    resetShotClock(state.shotClockDefault);
+    initSettingsInputsFromState();
+    renderScoreboard();
+    renderPlayersTables();
+    renderActionLog();
+    saveState();
+  </script>
+</body>
+</html>

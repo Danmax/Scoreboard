@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Player Control Panel</title>
+  <style>
+    body {
+      margin: 0;
+      background: #0d0d0d;
+      color: #fff;
+      font-family: system-ui, sans-serif;
+      padding: 20px;
+    }
+    h1 { text-align:center; margin-bottom:20px; }
+    .team-block {
+      margin-bottom: 40px;
+      background:#1a1a1a;
+      padding:20px;
+      border-radius:16px;
+      box-shadow:0 0 20px rgba(0,0,0,0.4);
+    }
+    h2 { margin-top:0; }
+    table { width:100%; border-collapse:collapse; margin-top:12px; }
+    th, td {
+      padding:10px;
+      border-bottom:1px solid #333;
+      text-align:center;
+    }
+    th { color:#ccc; }
+    .actions button {
+      padding:6px 10px;
+      margin:2px;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+    }
+    .stat-btn { background:#333; color:#fff; }
+    .stat-btn:hover { background:#444; }
+    .sub-btn { background:#ff9f66; color:#000; font-weight:600; }
+    .sub-btn:hover { background:#ff7f35; }
+
+    .sub-panel {
+      margin-top:10px;
+      padding:12px;
+      background:#111;
+      border-radius:12px;
+      display:none;
+    }
+    .bench-btn {
+      display:block;
+      width:100%;
+      margin:4px 0;
+      padding:10px;
+      background:#222;
+      color:#fff;
+      border-radius:8px;
+      text-align:center;
+      cursor:pointer;
+    }
+    .bench-btn:hover { background:#333; }
+  </style>
+</head>
+<body>
+  <h1>Player Stats & Substitution Control</h1>
+
+  <div id="teamsRow" style="display:flex; gap:20px; align-items:flex-start; justify-content:center;"></div>
+
+  <script>
+    let openSubFor = null;  // preserve open substitution panel
+
+    function loadState() {
+      const raw = localStorage.getItem("basketball_scoreboard_state_v3");
+      if (!raw) return null;
+      try { return JSON.parse(raw); } catch { return null; }
+    }
+
+    function saveState(data) {
+      localStorage.setItem("basketball_scoreboard_state_v3", JSON.stringify(data));
+    }
+
+    function render() {
+      const saved = loadState();
+      if (!saved) return;
+      const state = saved.state;
+      const players = saved.players;
+
+      const row = document.getElementById('teamsRow');
+      row.innerHTML = '';
+
+      ["A","B"].forEach(teamKey => {
+        const teamName = state[teamKey === 'A' ? 'teamA' : 'teamB'].name;
+
+        const block = document.createElement('div');
+        block.className = 'team-block';
+        block.style.flex = '1';
+        block.innerHTML = `<h2 style='text-align:center;'>${teamName}</h2>`;
+
+        const table = document.createElement('table');
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>PTS</th>
+              <th>REB</th>
+              <th>AST</th>
+              <th>FLS</th>
+              <th>On</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="body_${teamKey}"></tbody>
+        `;
+        block.appendChild(table);
+        row.appendChild(block);
+
+        const body = block.querySelector(`#body_${teamKey}`);
+        const list = [...players[teamKey].filter(p=>p.onCourt), ...players[teamKey].filter(p=>!p.onCourt)];
+
+        list.forEach(pl => {
+          const tr = document.createElement('tr');
+          const panelId = `sub_${teamKey}_${pl.id}`;
+
+          tr.innerHTML = `
+            <td>${pl.number}</td>
+            <td>${pl.name}</td>
+            <td>${pl.pts}</td>
+            <td>${pl.reb}</td>
+            <td>${pl.ast}</td>
+            <td>${pl.fls}</td>
+            <td>${pl.onCourt ? '⭐' : ''}</td>
+            <td class="actions">
+              <button class="stat-btn" onclick="updateStat('${teamKey}','${pl.id}','pts',1)">+PTS</button>
+              <button class="stat-btn" onclick="updateStat('${teamKey}','${pl.id}','reb',1)">+REB</button>
+              <button class="stat-btn" onclick="updateStat('${teamKey}','${pl.id}','ast',1)">+AST</button>
+              <button class="stat-btn" onclick="updateStat('${teamKey}','${pl.id}','fls',1)">+F</button>
+              <button class="sub-btn" onclick="toggleSub('${teamKey}','${pl.id}')">Sub</button>
+              <div class="sub-panel" id="${panelId}"></div>
+            </td>`;
+
+          body.appendChild(tr);
+
+          // restore open sub-panel
+          if (openSubFor === panelId) fillSubPanel(teamKey, pl.id);
+        });
+      });
+    }
+
+    function updateStat(teamKey, playerId, stat, val) {
+      const saved = loadState();
+      if (!saved) return;
+      const players = saved.players;
+
+      const pl = players[teamKey].find(p=>p.id===playerId);
+      if (!pl) return;
+
+      pl[stat] += val;
+      if (stat === 'pts') {
+        if (teamKey === 'A') saved.state.teamA.score += val;
+        else saved.state.teamB.score += val;
+      }
+
+      saveState(saved);
+      render();
+    }
+
+    function toggleSub(teamKey, playerOutId) {
+      const panelId = `sub_${teamKey}_${playerOutId}`;
+      const panel = document.getElementById(panelId);
+
+      if (openSubFor === panelId) {
+        // close
+        openSubFor = null;
+        panel.style.display = 'none';
+        return;
+      }
+
+      // open new
+      openSubFor = panelId;
+      fillSubPanel(teamKey, playerOutId);
+    }
+
+    function fillSubPanel(teamKey, playerOutId) {
+      const saved = loadState();
+      if (!saved) return;
+      const panelId = `sub_${teamKey}_${playerOutId}`;
+      const panel = document.getElementById(panelId);
+      panel.style.display = 'block';
+      panel.innerHTML = '';
+
+      const bench = saved.players[teamKey].filter(p=>!p.onCourt);
+      bench.forEach(pl => {
+        const btn = document.createElement('div');
+        btn.className = 'bench-btn';
+        btn.textContent = `#${pl.number} ${pl.name}`;
+        btn.onclick = () => doSub(teamKey, playerOutId, pl.id);
+        panel.appendChild(btn);
+      });
+    }
+
+    function doSub(teamKey, playerOutId, playerInId) {
+      const saved = loadState();
+      if (!saved) return;
+      const list = saved.players[teamKey];
+
+      const out = list.find(p=>p.id===playerOutId);
+      const inn = list.find(p=>p.id===playerInId);
+      if (!out || !inn) return;
+
+      out.onCourt = false;
+      inn.onCourt = true;
+
+      saveState(saved);
+      openSubFor = null; // close panel after substitution
+      render();
+    }
+
+    render();
+    setInterval(render, 800);
+  </script>
+</body>
+</html>

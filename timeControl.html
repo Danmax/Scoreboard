@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Time Control Panel</title>
+  <style>
+    body {
+      margin: 0;
+      background: #0d0d0d;
+      color: #fff;
+      font-family: system-ui, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .panel {
+      background: #1a1a1a;
+      padding: 30px;
+      border-radius: 20px;
+      width: 400px;
+      box-shadow: 0 0 40px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    h1 { margin: 0; font-size: 1.8rem; text-align:center; }
+    .displayBox {
+      background:#000;
+      padding:20px;
+      border-radius:12px;
+      text-align:center;
+    }
+    .clock { font-size:3rem; font-weight:700; }
+    .shot { font-size:2rem; color:#ff6767; }
+    .buttons {
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:12px;
+    }
+    button {
+      padding:14px;
+      background:#333;
+      border:none;
+      border-radius:12px;
+      color:#fff;
+      font-size:1rem;
+      cursor:pointer;
+      transition:0.2s;
+    }
+    button:hover { background:#444; }
+    .primary { background:#ff9f66; color:#000; }
+    .primary:hover { background:#ff8f4a; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>Time Control</h1>
+    <div class="displayBox">
+      <div id="clock" class="clock">10:00</div>
+      <div id="shot" class="shot">24</div>
+    </div>
+    <div class="buttons">
+      <button class="primary" onclick="send('startGame')">Start Game Clock</button>
+      <button onclick="send('stopGame')">Stop Game Clock</button>
+      <button onclick="send('resetQuarter')">Reset Quarter</button>
+      <button onclick="send('nextQuarter')">Next Quarter</button>
+      <button class="primary" onclick="send('startShot')">Start Shot</button>
+      <button onclick="send('stopShot')">Stop Shot</button>
+      <button onclick="send('reset24')">Reset 24</button>
+      <button onclick="send('reset14')">Reset 14</button>
+    </div>
+  </div>
+
+<script>
+  // Live sync to display time on this page
+  function updateDisplay() {
+    const saved = localStorage.getItem("basketball_scoreboard_state_v3");
+    if (!saved) return;
+    try {
+      const d = JSON.parse(saved).state;
+      document.getElementById('clock').textContent = formatTime(d.gameClockSeconds);
+      document.getElementById('shot').textContent = d.shotClockSeconds;
+    } catch {}
+  }
+
+  function formatTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${String(s).padStart(2,'0')}`;
+  }
+
+  setInterval(updateDisplay, 200);
+
+  // Commands sent by modifying a control flag in localStorage
+  function send(cmd) {
+    localStorage.setItem("scoreboard_command", cmd);
+  }
+
+</script>
+</body>
+</html>
