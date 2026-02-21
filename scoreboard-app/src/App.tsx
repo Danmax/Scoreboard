@@ -39,22 +39,12 @@ function initialMode(): "live" | "manager" | "team-stats" {
 
 type AppTheme = "light" | "dark";
 
-interface SavedGame {
-  id: string;
-  createdAt: number;
-  title: string;
-  winner: string;
-  summary: string;
-  payload: PersistedPayload;
-}
-
 interface ActiveManagerGameMeta {
   scheduledGameId: string | null;
   homeTeamId: string;
   awayTeamId: string;
 }
 
-const GAME_ARCHIVE_KEY = "scoreboard_saved_games_v1";
 const THEME_STORAGE_KEY = "scoreboard_theme_v1";
 
 function initialTheme(): AppTheme {
@@ -63,63 +53,11 @@ function initialTheme(): AppTheme {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-function formatDateTime(ts: number): string {
-  return new Date(ts).toLocaleString();
-}
-
-function buildGameSummary(payload: PersistedPayload): string {
-  const { state } = payload;
-  const allPlayers = [...payload.players.A, ...payload.players.B];
-  const top = [...allPlayers]
-    .sort((a, b) => b.pts - a.pts || b.reb - a.reb || b.ast - a.ast)
-    .slice(0, 3);
-  const winner =
-    state.teamA.score === state.teamB.score
-      ? "Tie"
-      : state.teamA.score > state.teamB.score
-        ? state.teamA.name
-        : state.teamB.name;
-
-  const lines: string[] = [];
-  lines.push(`${state.teamA.name} ${state.teamA.score} - ${state.teamB.score} ${state.teamB.name}`);
-  lines.push(`Winner: ${winner}`);
-  lines.push(`Q${state.quarter}/${state.totalQuarters} | Clock ${formatClock(state.gameClockSeconds)}`);
-  lines.push(
-    `${state.teamA.name} FOUL ${state.teamA.fouls}, TO ${state.teamA.timeouts}, FB ${state.teamA.fastBreakPoints}`,
-  );
-  lines.push(
-    `${state.teamB.name} FOUL ${state.teamB.fouls}, TO ${state.teamB.timeouts}, FB ${state.teamB.fastBreakPoints}`,
-  );
-  lines.push("Top Players:");
-  for (const p of top) {
-    lines.push(
-      `#${p.number} ${p.name}: ${p.pts} PTS, ${p.reb} REB, ${p.ast} AST, ${p.stl} STL, ${p.blk} BLK, ${p.tpm} 3PM`,
-    );
-  }
-  return lines.join("\n");
-}
-
-function loadSavedGames(): SavedGame[] {
-  const raw = localStorage.getItem(GAME_ARCHIVE_KEY);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as SavedGame[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveSavedGames(list: SavedGame[]): void {
-  localStorage.setItem(GAME_ARCHIVE_KEY, JSON.stringify(list));
-}
-
 export default function App() {
   const { payload, dispatch } = useScoreboardStore();
   const { state } = payload;
   const [mode, setMode] = useState<"live" | "manager" | "team-stats">(initialMode);
   const [theme, setTheme] = useState<AppTheme>(initialTheme);
-  const [savedGames, setSavedGames] = useState<SavedGame[]>(() => loadSavedGames());
   const [activeManagerGame, setActiveManagerGame] = useState<ActiveManagerGameMeta | null>(null);
 
   const [rosterTeam, setRosterTeam] = useState<"A" | "B">("A");
@@ -372,38 +310,16 @@ export default function App() {
     }
   };
 
-  const endGame = (saveArchive: boolean) => {
+  const endGame = () => {
     const scoreLine = `${state.teamA.name} ${state.teamA.score} - ${state.teamB.score} ${state.teamB.name}`;
-    const ok = window.confirm(
-      saveArchive
-        ? `Finalize game and save stats archive?\n${scoreLine}`
-        : `Finalize game without saving archive?\n${scoreLine}`,
-    );
+    const ok = window.confirm(`Finalize game?\n${scoreLine}`);
     if (!ok) return;
 
     const snapshot: PersistedPayload = JSON.parse(JSON.stringify(payload)) as PersistedPayload;
-    if (saveArchive) {
-      const summary = buildGameSummary(snapshot);
-      const entry: SavedGame = {
-        id: `${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
-        createdAt: Date.now(),
-        title: `${snapshot.state.teamA.name} ${snapshot.state.teamA.score}-${snapshot.state.teamB.score} ${snapshot.state.teamB.name}`,
-        winner: winnerLabel,
-        summary,
-        payload: snapshot,
-      };
-      const next = [entry, ...savedGames].slice(0, 40);
-      setSavedGames(next);
-      saveSavedGames(next);
-    }
-
     finalizeManagerGame(snapshot);
 
     dispatch({ type: "FINISH_GAME" });
-    dispatch({
-      type: "ADD_LOG",
-      text: saveArchive ? `Game finalized and saved: ${scoreLine}` : `Game finalized: ${scoreLine}`,
-    });
+    dispatch({ type: "ADD_LOG", text: `Game finalized: ${scoreLine}` });
   };
 
   const renderPlayerTable = (team: "A" | "B") => {
@@ -644,7 +560,9 @@ export default function App() {
           >
             Start Halftime
           </button>
+          <button onClick={endGame}>Finalize Game</button>
         </div>
+        <div className="muted">Winner if ended now: {winnerLabel}</div>
       </section>
 
       <section className="players-grid">{renderPlayerTable("A")}{renderPlayerTable("B")}</section>
@@ -776,43 +694,6 @@ export default function App() {
         </div>
       </section>
 
-      <section className="card controls">
-        <h2>Game Results Archive</h2>
-        <div className="row-actions">
-          <button onClick={() => endGame(false)}>Finalize Game</button>
-          <button onClick={() => endGame(true)}>Finalize + Save Stats</button>
-        </div>
-        <div className="muted">Winner if ended now: {winnerLabel}</div>
-        <div className="list-block archive-list">
-          {savedGames.length === 0 ? (
-            <div className="empty-log">No saved games yet.</div>
-          ) : (
-            savedGames.map((game) => (
-              <div className="list-row game-row" key={game.id}>
-                <div>
-                  <strong>{game.title}</strong>
-                  <div className="muted">
-                    {formatDateTime(game.createdAt)} | Winner: {game.winner}
-                  </div>
-                </div>
-                <div className="row-actions">
-                  <button onClick={() => navigator.clipboard.writeText(game.summary)}>Copy Summary</button>
-                  <button
-                    onClick={() => {
-                      const next = savedGames.filter((g) => g.id !== game.id);
-                      setSavedGames(next);
-                      saveSavedGames(next);
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
-
       {subTeam && subOutId ? (
         <div className="modal-backdrop" onClick={closeSubModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -884,13 +765,6 @@ export default function App() {
         </div>
       ) : null}
 
-      <section className="card controls">
-        <h2>Legacy Control Commands</h2>
-        <p>
-          This app listens for <code>scoreboard_command</code> and syncs state to both
-          <code> basketball_scoreboard_state_v3</code> and <code>basketball_scoreboard_state_v5b</code>.
-        </p>
-      </section>
       </>
       ) : null}
     </main>
